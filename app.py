@@ -5,7 +5,7 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
-app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # limite aumentado a 2MB para dropzone
 app.config['UPLOAD_EXTENSIONS'] = ['.jpg', '.png', '.gif']
 app.config['UPLOAD_PATH'] = 'uploads'
 
@@ -17,6 +17,10 @@ def validate_image(stream):
     if not format:
         return None                 # no es imagen
     return '.' + (format if format != 'jpeg' else 'jpg')   # devuelve extension
+
+@app.errorhandler(413)
+def too_large(e):
+    return "File is too large", 413
 
 @app.route('/')
 def index():
@@ -33,10 +37,10 @@ def upload_file():
         # valida extension y que el contenido real coincida
         if file_ext not in app.config['UPLOAD_EXTENSIONS'] or \
            file_ext != validate_image(uploaded_file.stream):
-            abort(400)              # rechaza el archivo
-        
+            return "Invalid image", 400  # dropzone muestra este mensaje en el error
+
         uploaded_file.save(os.path.join(app.config['UPLOAD_PATH'], filename))
-    return redirect(url_for('index'))
+    return '', 204  # 204 No Content: exito sin redireccion (requerido por dropzone)
 
 
 @app.route('/uploads/<filename>')
